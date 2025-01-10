@@ -6,7 +6,7 @@ class Queries:
         pass
 
 
-    # Listar os canais com o número total de vídeos e a quantidade total de comentários que receberam em seus vídeos, agrupados por canal.
+    # (9) Listar os canais com o número total de vídeos e a quantidade total de comentários que receberam em seus vídeos, agrupados por canal.
     def get_channels_with_total_videos_and_comments(
         self, connection: psycopg.Connection, cursor: psycopg.Cursor, quantity: int = -1
     ):
@@ -36,8 +36,8 @@ class Queries:
             return cursor.fetchall()
         else:
             return cursor.fetchmany(quantity)
-    # Listar os canais que possuem playlists com mais de 5 vídeos, mostrando o nome do canal, o número total de playlists e o total de vídeos nessas playlists.
-    def get_channels_with_playlists_over_5_videos(
+    # (3) Listar os canais que possuem playlists com mais de 5 vídeos, mostrando o nome do canal, o número total de playlists e o total de vídeos nessas playlists.
+    def get_channels_with_playlists_over_x_videos(
         self, connection: psycopg.Connection, cursor: psycopg.Cursor, vid_quantity:int = 0, quantity: int = -1
     ):
         cursor.execute(
@@ -45,6 +45,7 @@ class Queries:
             SELECT 
                 ContaCanal.ID AS IDCanal,
                 ContaCanal.Nome AS NomeCanal,
+                Playlist.Nome
                 COUNT(DISTINCT Playlist.ID) AS TotalPlaylists,
                 COUNT(PlaylistVideo.IDVideo) AS TotalVideos
             FROM 
@@ -70,7 +71,7 @@ class Queries:
         else:
             return cursor.fetchmany(quantity)
 
-    # Identifica vídeos que possuem mais (maior ou igual) comentários do que a média de comentários por vídeo no sistema.
+    # (8) Identifica vídeos que possuem mais (maior ou igual) comentários do que a média de comentários por vídeo no sistema.
     def get_videos_with_above_average_comments(
         self, connection: psycopg.Connection, cursor: psycopg.Cursor, quantity: int = -1
     ):
@@ -105,7 +106,7 @@ class Queries:
         else:
             return cursor.fetchmany(quantity)
 
-    # Identifica canais que publicaram mais vídeos do que a média de vídeos por canal.
+    # (7) Identifica canais que publicaram mais vídeos do que a média de vídeos por canal.
     def get_channels_with_above_average_videos(
         self, connection: psycopg.Connection, cursor: psycopg.Cursor, quantity: int = -1
     ):
@@ -138,22 +139,24 @@ class Queries:
         else:
             return cursor.fetchmany(quantity)
 
-    # Retorna os ID de todos dos vídeos que estão em playlists e que pertencem a canais com mais de [x] inscritos.
+    # (2) Retorna os vídeos que estão em playlists e que pertencem a canais com mais de [x] inscritos.
     def get_videos_from_playlists_whith_x_subscribers(
-        self, connection: psycopg.Connection, cursor: psycopg.Cursor, quantity: int = -1
+        self, connection: psycopg.Connection, cursor: psycopg.Cursor, quant_subs:int, quantity: int = -1
     ):
         cursor.execute(
             """
-            SELECT DISTINCT PlaylistVideo.IDVideo
+            SELECT DISTINCT Video.ID, Video.Titulo, Video.Resolucao, Video.NumeroVisualizacoes, Video.Duracao
             FROM PlaylistVideo
+            JOIN Video ON PlaylistVideo.IDVideo = Video.ID
             WHERE PlaylistVideo.IDVideo NOT IN (
                 SELECT Video.ID
                 FROM Video
                 JOIN Post ON Video.IDPost = Post.ID
                 JOIN ContaCanal ON Post.IDCanal = ContaCanal.ID
-                WHERE ContaCanal.NumeroInscritos <= 1000
+                WHERE ContaCanal.NumeroInscritos <= %s
             );
-            """
+            """,
+            (quant_subs,)
         )
 
         connection.commit()
@@ -163,9 +166,9 @@ class Queries:
         else:
             return cursor.fetchmany(quantity)
 
-    # Retorna o ID e o Nome dos canais que não publicaram nenhum vídeo com resolução inferior a 720p e menos de 100 visualizações.
+    # (4) Retorna o ID e o Nome dos canais que não publicaram nenhum vídeo com resolução inferior a 720p e menos de [x] visualizações.
     def get_channels_with_no_low_res_low_view_videos(
-        self, connection: psycopg.Connection, cursor: psycopg.Cursor, quantity: int = -1
+        self, connection: psycopg.Connection, cursor: psycopg.Cursor, n_views: int = 0, quantity: int = -1
     ):
         cursor.execute(
             """
@@ -177,10 +180,12 @@ class Queries:
                 JOIN Post ON Video.IDPost = Post.ID
                 WHERE Post.IDCanal = ContaCanal.ID
                 AND Video.Resolucao < '720p'
-                AND Video.NumeroVisualizacoes < 100
+                AND Video.NumeroVisualizacoes < %s
             );
-            """
+            """,
+            (n_views,)
         )
+        
 
         connection.commit()
 
@@ -189,7 +194,7 @@ class Queries:
         else:
             return cursor.fetchmany(quantity)
 
-    # Retorna os [x] canais com melhor taxa de cliques/tempo de exibição do canal (soma da duração de todos os seus vídeos) de um anúncio [y].
+    # (5) Retorna os [x] canais com melhor taxa de cliques/tempo de exibição do canal (soma da duração de todos os seus vídeos) de um anúncio [y].
     def get_top_channels_by_click_rate(
         self,
         connection: psycopg.Connection,
@@ -234,9 +239,9 @@ class Queries:
             return cursor.fetchmany(quantity)
 
 
-    # Identifica canais que publicaram posts de comunidade com textos longos (mais de 500 caracteres).
+    # (6) Identifica canais que publicaram posts de comunidade com textos mais longos que [x] caracteres.
     def get_channels_community_posts(
-        self, connection: psycopg.Connection, cursor: psycopg.Cursor, post_size:int = -1, quantity: int = -1
+        self, connection: psycopg.Connection, cursor: psycopg.Cursor, post_length: int = 500, quantity: int = -1
     ):
         cursor.execute(
             """
@@ -252,12 +257,13 @@ class Queries:
             JOIN 
                 PostComunidade ON Post.ID = PostComunidade.IDPost
             WHERE 
-                CHAR_LENGTH(PostComunidade.Texto) > 500
+                CHAR_LENGTH(PostComunidade.Texto) > %s
             GROUP BY 
                 ContaCanal.ID, ContaCanal.Nome
             ORDER BY 
                 TotalPostsLongos DESC;
-            """
+            """,
+            (post_length,)
         )
 
         connection.commit()

@@ -23,10 +23,13 @@ if __name__ == "__main__":
     while(opt != -1):
         print("\n1 - Criar view DetalhesVideos.")
         print("2 - Videos em playlists Cujos canais possuem mais de [x] inscritos.")
-        print("3 - Playlists com mais de [x] vídeos e canal criador.")
+        print("3 - Canais com playlists com mais de [x] videos.")
         print("4 - Canais que nao postaram nenhum vídeo com resolução menor que 720p e menos de [x] visualizações.")
         print("5 - [x] Canais com melhor taxa de cliques/tempo de exibição no anúncio com id [y]")
         print("6 - Canais com posts de comunidade maior que [x] caracteres.")
+        print("7 - Canais com mais vídeos publicado que a média por canal")
+        print("8 - Vídeos que possuem mais comentários que a média por vídeo")
+        print("9 - Número de videos e comentários por canal")
 
         opt = int(input("\nDigite a opção desejada: "))
 
@@ -45,7 +48,8 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Valor inválido.")
                     break
-                print(QUERIES.get_videos_from_playlists_whith_x_subscribers(DB_CONNECTION, DB_CURSOR, n))
+                for t in QUERIES.get_videos_from_playlists_whith_x_subscribers(DB_CONNECTION, DB_CURSOR, n):
+                    print(t)
             case 3:
                 print("Quantidade de vídeos mínima: ")
                 try:
@@ -53,8 +57,9 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Valor inválido.")
                     break
-                #print(QUERIES.get_)
-          
+                for t in QUERIES.get_channels_with_playlists_over_x_videos(DB_CONNECTION, DB_CURSOR, n):
+                    print(t)
+
             case 4:
                 print("Quantidade de visualizações: ")
                 try:
@@ -62,7 +67,8 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Valor inválido.")
                     break
-                print(QUERIES.get_channels_with_no_low_res_low_view_videos(DB_CONNECTION, DB_CURSOR, n))
+                for t in QUERIES.get_channels_with_no_low_res_low_view_videos(DB_CONNECTION, DB_CURSOR, n):
+                    print(t) 
                 
             case 5:
                 try:
@@ -72,7 +78,8 @@ if __name__ == "__main__":
                     quantity = -1
                     print("ID do anúncio: ")
                 ad_id = int(input())
-                print(QUERIES.get_top_channels_by_click_rate(DB_CONNECTION, DB_CURSOR, ad_id, quantity))
+                for t in (QUERIES.get_top_channels_by_click_rate(DB_CONNECTION, DB_CURSOR, ad_id, quantity)):
+                    print(t)
 
             case 6:
                 print("Tamanho mínimo do post de comunidade: ")
@@ -81,8 +88,20 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Valor inválido.")
                     break
-                print(QUERIES.get_channels_community_posts(DB_CONNECTION, DB_CURSOR, n))
+                for t in (QUERIES.get_channels_community_posts(DB_CONNECTION, DB_CURSOR, n)):
+                    print(t)
 
+            case 7:
+                for t in (QUERIES.get_channels_with_above_average_videos(DB_CONNECTION, DB_CURSOR)):
+                    print(t)
+
+            case 8: 
+                for t in (QUERIES.get_videos_with_above_average_comments(DB_CONNECTION, DB_CURSOR)):
+                    print(t)
+                    
+            case 9: 
+                for t in (QUERIES.get_channels_with_total_videos_and_comments(DB_CONNECTION,DB_CURSOR)):
+                    print(t)
                 
 
         #print("3 - Número de vídeos e comentários por canal.")
