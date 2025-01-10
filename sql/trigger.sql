@@ -4,7 +4,7 @@ BEGIN
     INSERT INTO Feed (IDCanal, IDVideo)
     SELECT IDFonte, NEW.ID
     FROM Inscricoes
-    WHERE IDDestino = (SELECT IDCanal FROM Post WHERE ID = NEW.IDPost);
+    WHERE IDFonte = (SELECT IDCanal FROM Post WHERE ID = NEW.IDPost);
 
     RETURN NEW;
 END;

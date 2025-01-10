@@ -1,10 +1,8 @@
 import psycopg
 
 class Queries:
-
     def __init__(self) -> None:
         pass
-
 
     # (9) Listar os canais com o número total de vídeos e a quantidade total de comentários que receberam em seus vídeos, agrupados por canal.
     def get_channels_with_total_videos_and_comments(
@@ -36,16 +34,21 @@ class Queries:
             return cursor.fetchall()
         else:
             return cursor.fetchmany(quantity)
-    # (3) Listar os canais que possuem playlists com mais de 5 vídeos, mostrando o nome do canal, o número total de playlists e o total de vídeos nessas playlists.
+
+    # (3) Listar os canais que possuem playlists com mais de [x] vídeos, mostrando o nome do canal, o número total de playlists e o total de vídeos nessas playlists.
     def get_channels_with_playlists_over_x_videos(
-        self, connection: psycopg.Connection, cursor: psycopg.Cursor, vid_quantity:int = 0, quantity: int = -1
+        self,
+        connection: psycopg.Connection,
+        cursor: psycopg.Cursor,
+        vid_quantity: int = 0,
+        quantity: int = -1,
     ):
         cursor.execute(
             """
             SELECT 
                 ContaCanal.ID AS IDCanal,
                 ContaCanal.Nome AS NomeCanal,
-                Playlist.Nome
+                Playlist.Nome,
                 COUNT(DISTINCT Playlist.ID) AS TotalPlaylists,
                 COUNT(PlaylistVideo.IDVideo) AS TotalVideos
             FROM 
@@ -55,13 +58,13 @@ class Queries:
             JOIN 
                 PlaylistVideo ON Playlist.ID = PlaylistVideo.IDPlaylist
             GROUP BY 
-                ContaCanal.ID, ContaCanal.Nome
+                ContaCanal.ID, ContaCanal.Nome, Playlist.Nome
             HAVING 
                 COUNT(PlaylistVideo.IDVideo) > %s
             ORDER BY 
                 TotalVideos DESC;
             """,
-            (vid_quantity,)
+            (vid_quantity,),
         )
 
         connection.commit()
@@ -141,7 +144,11 @@ class Queries:
 
     # (2) Retorna os vídeos que estão em playlists e que pertencem a canais com mais de [x] inscritos.
     def get_videos_from_playlists_whith_x_subscribers(
-        self, connection: psycopg.Connection, cursor: psycopg.Cursor, quant_subs:int, quantity: int = -1
+        self,
+        connection: psycopg.Connection,
+        cursor: psycopg.Cursor,
+        quant_subs: int,
+        quantity: int = -1,
     ):
         cursor.execute(
             """
@@ -156,7 +163,7 @@ class Queries:
                 WHERE ContaCanal.NumeroInscritos <= %s
             );
             """,
-            (quant_subs,)
+            (quant_subs,),
         )
 
         connection.commit()
@@ -168,7 +175,11 @@ class Queries:
 
     # (4) Retorna o ID e o Nome dos canais que não publicaram nenhum vídeo com resolução inferior a 720p e menos de [x] visualizações.
     def get_channels_with_no_low_res_low_view_videos(
-        self, connection: psycopg.Connection, cursor: psycopg.Cursor, n_views: int = 0, quantity: int = -1
+        self,
+        connection: psycopg.Connection,
+        cursor: psycopg.Cursor,
+        n_views: int = 0,
+        quantity: int = -1,
     ):
         cursor.execute(
             """
@@ -183,9 +194,8 @@ class Queries:
                 AND Video.NumeroVisualizacoes < %s
             );
             """,
-            (n_views,)
+            (n_views,),
         )
-        
 
         connection.commit()
 
@@ -238,10 +248,13 @@ class Queries:
         else:
             return cursor.fetchmany(quantity)
 
-
     # (6) Identifica canais que publicaram posts de comunidade com textos mais longos que [x] caracteres.
     def get_channels_community_posts(
-        self, connection: psycopg.Connection, cursor: psycopg.Cursor, post_length: int = 500, quantity: int = -1
+        self,
+        connection: psycopg.Connection,
+        cursor: psycopg.Cursor,
+        post_length: int = 500,
+        quantity: int = -1,
     ):
         cursor.execute(
             """
@@ -263,7 +276,7 @@ class Queries:
             ORDER BY 
                 TotalPostsLongos DESC;
             """,
-            (post_length,)
+            (post_length,),
         )
 
         connection.commit()
@@ -272,3 +285,123 @@ class Queries:
             return cursor.fetchall()
         else:
             return cursor.fetchmany(quantity)
+
+    def get_subscriptions(
+        self,
+        connection: psycopg.Connection,
+        cursor: psycopg.Cursor,
+        channel: int = 0,
+        quantity: int = -1,
+    ):
+        cursor.execute(
+            """
+            SELECT
+                C2.ID, C2.Nome, I.IDFonte
+            FROM
+                Inscricoes I 
+            JOIN 
+                ContaCanal C1 ON (I.IDDestino = C1.ID) 
+            JOIN
+                ContaCanal C2 ON (I.IDFonte = C2.ID)
+            WHERE
+                I.IDDestino = %s
+            """,
+            (channel,),
+        )
+
+        connection.commit()
+
+        if quantity == -1:
+            return cursor.fetchall()
+        else:
+            return cursor.fetchmany(quantity)
+
+    def get_feed(
+        self,
+        connection: psycopg.Connection,
+        cursor: psycopg.Cursor,
+        channel: int = 0,
+        quantity: int = -1,
+    ):
+        cursor.execute(
+            """
+            SELECT
+                Feed.IDCanal, Feed.IDVideo, Video.Titulo
+            FROM
+                Feed 
+            JOIN
+                Video ON (Feed.IDVideo = Video.ID)
+            WHERE
+                Feed.IDCanal = %s
+            """,
+            (channel,),
+        )
+
+        connection.commit()
+
+        if quantity == -1:
+            return cursor.fetchall()
+        else:
+            return cursor.fetchmany(quantity)
+
+    def insert_video(
+        self,
+        connection: psycopg.Connection,
+        cursor: psycopg.Cursor,
+        IDCanal: int = 0,
+        Likes: int = 0,
+        Dislikes: int = 0,
+        DataPublicacao: str = "",
+        Short: bool = False,
+        Descricao: str = "",
+        Resolucao: str = "",
+        Duracao: int = 0,
+        NumeroVisualizacoes: int = 0,
+        Titulo: str = "",
+    ):
+        cursor.execute(
+            """
+            INSERT INTO Post (IDCanal, Likes, Dislikes, DataPublicacao)
+            VALUES (%s, %s, %s, %s)
+            RETURNING ID;
+            """,
+            (IDCanal, Likes, Dislikes, DataPublicacao)
+        )
+        result = cursor.fetchone()
+        if result is None:
+            raise ValueError("Failed to insert post and retrieve ID.")
+        post_id = result[0]
+
+        cursor.execute(
+            """
+            INSERT INTO Video (IDPost, Short, Descricao, Resolucao, Duracao, NumeroVisualizacoes, Titulo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
+            """,
+            (post_id, Short, Descricao, Resolucao, Duracao, NumeroVisualizacoes, Titulo)
+        )
+
+        connection.commit()
+
+
+# CREATE TABLE Post(
+# 	ID SERIAL NOT NULL,
+# 	IDCanal INT NOT NULL,
+# 	Likes INT NOT NULL,
+# 	Dislikes INT NOT NULL,
+# 	DataPublicacao DATE NOT NULL,
+# 	PRIMARY KEY(ID),
+# 	FOREIGN KEY(IDCanal) REFERENCES ContaCanal(ID) ON DELETE CASCADE
+# );
+
+# CREATE TABLE Video(
+# 	ID SERIAL NOT NULL,
+# 	IDPost INT NOT NULL,
+# 	Short BOOLEAN NOT NULL,
+# 	Descricao VARCHAR(1000) NOT NULL,
+# 	Resolucao CHAR(9) NOT NULL,
+# 	Duracao INT NOT NULL,
+# 	NumeroVisualizacoes INT NOT NULL,
+# 	Titulo VARCHAR(30) NOT NULL,
+# 	PRIMARY KEY(ID),
+# 	FOREIGN KEY(IDPost) REFERENCES Post(ID) ON DELETE CASCADE
+# );
